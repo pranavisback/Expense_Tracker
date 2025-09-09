@@ -16,9 +16,9 @@ function App() {
   const [showAddExpense, setShowAddExpense] = useState(false);
 
   useEffect(() => {
-    const auth = localStorage.getItem('splitease_auth');
+    const token = localStorage.getItem('splitease_token');
     const onboarding = localStorage.getItem('splitease_onboarding');
-    setIsAuthenticated(!!auth);
+    setIsAuthenticated(!!token);
     setHasSeenOnboarding(!!onboarding);
   }, []);
 

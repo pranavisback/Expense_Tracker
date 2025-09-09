@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, DollarSign, Users, Coffee, Car, Home, ShoppingBag, Gamepad2, Heart } from 'lucide-react';
+import { api } from '../utils/api';
 
 interface AddExpenseProps {
   onClose: () => void;
@@ -39,9 +40,36 @@ export default function AddExpense({ onClose }: AddExpenseProps) {
     participants: [1, 2]
   });
 
-  const handleSubmit = () => {
-    // Here you would normally save the expense
-    onClose();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleSubmit = async () => {
+    setLoading(true);
+    setError('');
+
+    try {
+      const expenseData = {
+        title: formData.description,
+        amount: parseFloat(formData.amount),
+        category: formData.category,
+        description: formData.description,
+        date: new Date().toISOString()
+      };
+
+      const response = await api.createExpense(expenseData);
+      const data = await response.json();
+
+      if (data.success) {
+        onClose();
+        window.location.reload(); // Refresh to show new expense
+      } else {
+        setError(data.error || 'Failed to create expense');
+      }
+    } catch (err) {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -224,22 +252,30 @@ export default function AddExpense({ onClose }: AddExpenseProps) {
                   </div>
                 </div>
 
+                {error && (
+                  <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-2xl">
+                    {error}
+                  </div>
+                )}
+
                 <div className="flex space-x-3">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     onClick={() => setStep(1)}
-                    className="flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-semibold"
+                    disabled={loading}
+                    className="flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-semibold disabled:opacity-50"
                   >
                     Back
                   </motion.button>
                   <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    whileHover={{ scale: loading ? 1 : 1.02 }}
+                    whileTap={{ scale: loading ? 1 : 0.98 }}
                     onClick={handleSubmit}
-                    className="flex-1 bg-primary-green text-white py-4 rounded-2xl font-semibold"
+                    disabled={loading}
+                    className="flex-1 bg-primary-green text-white py-4 rounded-2xl font-semibold disabled:opacity-50"
                   >
-                    Add Expense
+                    {loading ? 'Adding...' : 'Add Expense'}
                   </motion.button>
                 </div>
               </motion.div>

@@ -54,7 +54,7 @@ export default function Profile() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('splitease_auth');
+    localStorage.removeItem('splitease_token');
     localStorage.removeItem('splitease_user');
     window.location.reload();
   };

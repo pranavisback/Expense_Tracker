@@ -6,34 +6,56 @@ interface AuthProps {
   onLogin: () => void;
 }
 
+const API_BASE = 'http://localhost:5000/api';
+
 export default function Auth({ onLogin }: AuthProps) {
   const [isLogin, setIsLogin] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     password: ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    localStorage.setItem('splitease_auth', 'true');
-    localStorage.setItem('splitease_user', JSON.stringify({
-      name: formData.name || 'John Doe',
-      email: formData.email,
-      avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(formData.name || 'John Doe')}&background=4CAF50&color=fff`
-    }));
-    onLogin();
+    setLoading(true);
+    setError('');
+
+    try {
+      const endpoint = isLogin ? '/auth/login' : '/auth/register';
+      const payload = isLogin 
+        ? { email: formData.email, password: formData.password }
+        : { name: formData.name, email: formData.email, password: formData.password };
+
+      const response = await fetch(`${API_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        localStorage.setItem('splitease_token', data.token);
+        localStorage.setItem('splitease_user', JSON.stringify(data.data.user));
+        onLogin();
+      } else {
+        setError(data.error || 'Authentication failed');
+      }
+    } catch (err) {
+      setError('Network error. Please check if the server is running.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSocialLogin = (provider: string) => {
-    localStorage.setItem('splitease_auth', 'true');
-    localStorage.setItem('splitease_user', JSON.stringify({
-      name: 'John Doe',
-      email: `user@${provider}.com`,
-      avatar: 'https://ui-avatars.com/api/?name=John+Doe&background=4CAF50&color=fff'
-    }));
-    onLogin();
+    setError('Social login not implemented yet. Please use email/password.');
   };
 
   return (
@@ -81,6 +103,13 @@ export default function Auth({ onLogin }: AuthProps) {
             </button>
           </div>
 
+          {/* Error Message */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-2xl mb-4">
+              {error}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             {!isLogin && (
@@ -97,6 +126,7 @@ export default function Auth({ onLogin }: AuthProps) {
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   className="w-full pl-12 pr-4 py-4 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-primary-green/20 focus:border-primary-green transition-all"
+                  required={!isLogin}
                 />
               </motion.div>
             )}
@@ -133,12 +163,17 @@ export default function Auth({ onLogin }: AuthProps) {
             </div>
 
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={{ scale: loading ? 1 : 1.02 }}
+              whileTap={{ scale: loading ? 1 : 0.98 }}
               type="submit"
-              className="w-full bg-primary-green text-white py-4 rounded-2xl font-semibold text-lg shadow-lg ripple"
+              disabled={loading}
+              className={`w-full py-4 rounded-2xl font-semibold text-lg shadow-lg ripple transition-all ${
+                loading 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-primary-green hover:bg-primary-green/90'
+              } text-white`}
             >
-              {isLogin ? 'Login' : 'Create Account'}
+              {loading ? 'Please wait...' : (isLogin ? 'Login' : 'Create Account')}
             </motion.button>
           </form>
 
