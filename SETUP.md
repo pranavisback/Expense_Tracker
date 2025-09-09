@@ -12,11 +12,11 @@ npm install
 Edit `backend/.env`:
 ```env
 PORT=5000
-MONGDB_URI=mongodb+srv://aghodke363_db_user:bEbcfSA4il72eQqG@ajaybaba.pz4nsbv.mongodb.net/?retryWrites=true&w=majority&appName=splitease
-JWT_SECRET=fw8Kz9Lp&3DqYt7s@Vm2Xh5!Rj0Nc8Ub
+MONGDB_URI=mongodb+srv://username:password@clustername.mongodb.net/?retryWrites=true&w=majority&appName=splitease
+JWT_SECRET=a_strong_secret_key_for_jwt_with_32_sentence
 JWT_EXPIRE=30d
 NODE_ENV=production
-FRONTEND_URL=http://localhost:5173
+FRONTEND_URL=http://localhost:5173_or_your_frontend_url
 ```
 
 ### 3. Start Backend Server
