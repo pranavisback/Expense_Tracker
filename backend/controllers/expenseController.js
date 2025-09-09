@@ -1,6 +1,7 @@
 import Expense from '../models/Expense.js';
 import User from '../models/User.js';
 import Group from '../models/Group.js';
+import { clearUserCache } from '../middleware/cache.js';
 
 export const getExpenses = async (req, res) => {
   try {
@@ -94,6 +95,15 @@ export const createExpense = async (req, res) => {
       .populate('group', 'name')
       .populate('paidBy', 'name email avatar')
       .populate('splitBetween.user', 'name email avatar');
+
+    // Clear cache for user and group members
+    clearUserCache(req.user.id);
+    if (group) {
+      const groupData = await Group.findById(group).populate('members.user');
+      groupData.members.forEach(member => {
+        clearUserCache(member.user._id.toString());
+      });
+    }
 
     res.status(201).json({
       success: true,

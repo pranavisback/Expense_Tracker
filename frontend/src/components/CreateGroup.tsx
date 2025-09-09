@@ -27,6 +27,25 @@ export default function CreateGroup({ onClose, onSuccess }: CreateGroupProps) {
     type: ''
   });
 
+  const handleTypeSelect = (typeId) => {
+    setFormData({ ...formData, type: typeId });
+    
+    // Auto-fill name for predefined types
+    if (typeId !== 'other') {
+      const selectedType = groupTypes.find(t => t.id === typeId);
+      setFormData(prev => ({ 
+        ...prev, 
+        type: typeId,
+        name: selectedType?.label || ''
+      }));
+      
+      // Skip to step 2 for predefined types, stay on step 1 for 'other'
+      if (typeId !== 'other') {
+        setStep(2);
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     setLoading(true);
     setError('');
@@ -36,8 +55,8 @@ export default function CreateGroup({ onClose, onSuccess }: CreateGroupProps) {
       const data = await response.json();
 
       if (data.success) {
-        onSuccess();
         onClose();
+        onSuccess(); // Call onSuccess after closing
       } else {
         setError(data.error || 'Failed to create group');
       }
@@ -94,7 +113,7 @@ export default function CreateGroup({ onClose, onSuccess }: CreateGroupProps) {
                     <motion.button
                       key={type.id}
                       whileTap={{ scale: 0.98 }}
-                      onClick={() => setFormData({ ...formData, type: type.id })}
+                      onClick={() => handleTypeSelect(type.id)}
                       className={`flex items-center p-4 rounded-2xl border-2 transition-all text-left ${
                         formData.type === type.id
                           ? 'border-primary-green bg-primary-green/10'
@@ -115,15 +134,16 @@ export default function CreateGroup({ onClose, onSuccess }: CreateGroupProps) {
                   ))}
                 </div>
 
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setStep(2)}
-                  disabled={!formData.type}
-                  className="w-full bg-primary-green text-white py-4 rounded-2xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Next: Group Details
-                </motion.button>
+                {formData.type === 'other' && (
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => setStep(2)}
+                    className="w-full bg-primary-green text-white py-4 rounded-2xl font-semibold"
+                  >
+                    Next: Group Details
+                  </motion.button>
+                )}
               </motion.div>
             )}
 

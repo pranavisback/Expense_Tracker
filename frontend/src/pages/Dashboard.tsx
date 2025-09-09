@@ -4,6 +4,8 @@ import { Plus, Users, Plane, Building, TrendingUp, DollarSign } from 'lucide-rea
 import { useNavigate } from 'react-router-dom';
 import BottomNav from '../components/BottomNav';
 import CreateGroup from '../components/CreateGroup';
+import JoinGroup from '../components/JoinGroup';
+import NotificationBell from '../components/NotificationBell';
 import { api } from '../utils/api';
 
 interface DashboardProps {
@@ -37,6 +39,7 @@ export default function Dashboard({ onAddExpense }: DashboardProps) {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [showJoinGroup, setShowJoinGroup] = useState(false);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -107,7 +110,10 @@ export default function Dashboard({ onAddExpense }: DashboardProps) {
             <h1 className="text-2xl font-bold text-text-dark">Good morning!</h1>
             <p className="text-gray-600">Ready to split some bills?</p>
           </div>
-          <div className="w-12 h-12 bg-primary-green rounded-full animate-pulse-avatar"></div>
+          <div className="flex items-center space-x-3">
+            <NotificationBell />
+            <div className="w-12 h-12 bg-primary-green rounded-full animate-pulse-avatar"></div>
+          </div>
         </div>
 
         {/* Monthly Overview */}
@@ -146,12 +152,20 @@ export default function Dashboard({ onAddExpense }: DashboardProps) {
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-xl font-bold text-text-dark">Your Groups</h2>
-          <button 
-            onClick={() => setShowCreateGroup(true)}
-            className="text-primary-green font-semibold hover:text-primary-green/80"
-          >
-            Create Group
-          </button>
+          <div className="flex space-x-3">
+            <button 
+              onClick={() => setShowJoinGroup(true)}
+              className="text-primary-blue font-semibold hover:text-primary-blue/80 text-sm"
+            >
+              Join Group
+            </button>
+            <button 
+              onClick={() => setShowCreateGroup(true)}
+              className="text-primary-green font-semibold hover:text-primary-green/80 text-sm"
+            >
+              Create Group
+            </button>
+          </div>
         </div>
 
         {loading ? (
@@ -293,6 +307,14 @@ export default function Dashboard({ onAddExpense }: DashboardProps) {
       {showCreateGroup && (
         <CreateGroup 
           onClose={() => setShowCreateGroup(false)}
+          onSuccess={refreshData}
+        />
+      )}
+      
+      {/* Join Group Modal */}
+      {showJoinGroup && (
+        <JoinGroup 
+          onClose={() => setShowJoinGroup(false)}
           onSuccess={refreshData}
         />
       )}

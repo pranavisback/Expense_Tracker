@@ -53,8 +53,18 @@ export const api = {
       headers: { Authorization: `Bearer ${localStorage.getItem('splitease_token')}` },
     }),
 
-  getAnalytics: () =>
-    fetch(`${API_BASE}/analytics/summary`, {
+  getAnalytics: (period = 'month') =>
+    fetch(`${API_BASE}/analytics/summary?period=${period}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('splitease_token')}` },
+    }),
+
+  getMonthlyChart: (period = 'year') =>
+    fetch(`${API_BASE}/analytics/monthly?period=${period}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('splitease_token')}` },
+    }),
+
+  getCategoryChart: (period = 'month') =>
+    fetch(`${API_BASE}/analytics/category?period=${period}`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('splitease_token')}` },
     }),
 
@@ -113,5 +123,27 @@ export const api = {
   getUserDebts: () =>
     fetch(`${API_BASE}/settlements/debts`, {
       headers: { Authorization: `Bearer ${localStorage.getItem('splitease_token')}` },
+    }),
+
+  // Notifications
+  getNotifications: () =>
+    fetch(`${API_BASE}/notifications`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('splitease_token')}` },
+    }),
+
+  markNotificationRead: (notificationId: string) =>
+    fetch(`${API_BASE}/notifications/${notificationId}/read`, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${localStorage.getItem('splitease_token')}` },
+    }),
+
+  respondToGroupInvite: (notificationId: string, action: 'accept' | 'reject') =>
+    fetch(`${API_BASE}/notifications/${notificationId}/respond`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('splitease_token')}`,
+      },
+      body: JSON.stringify({ action }),
     }),
 };

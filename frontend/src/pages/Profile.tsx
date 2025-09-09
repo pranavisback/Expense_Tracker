@@ -13,6 +13,7 @@ import {
   ChevronRight 
 } from 'lucide-react';
 import BottomNav from '../components/BottomNav';
+import { api } from '../utils/api';
 
 const menuItems = [
   { icon: User, label: 'Edit Profile', color: 'text-primary-blue' },
@@ -27,18 +28,43 @@ export default function Profile() {
   const [darkMode, setDarkMode] = useState(false);
   const [notifications, setNotifications] = useState(true);
   const [user, setUser] = useState({ name: '', email: '', avatar: '' });
+  const [stats, setStats] = useState({ activeGroups: 0, totalSpent: 0, transactions: 0 });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const userData = localStorage.getItem('splitease_user');
-    if (userData) {
-      setUser(JSON.parse(userData));
-    }
+    const fetchUserData = async () => {
+      try {
+        // Get user from localStorage first
+        const userData = localStorage.getItem('splitease_user');
+        if (userData) {
+          setUser(JSON.parse(userData));
+        }
+        
+        // Fetch real statistics
+        const analyticsResponse = await api.getAnalytics('year'); // Get yearly stats
+        const analyticsData = await analyticsResponse.json();
+        
+        if (analyticsData.success) {
+          setStats({
+            activeGroups: analyticsData.data.activeGroups,
+            totalSpent: analyticsData.data.totalSpent,
+            transactions: analyticsData.data.totalTransactions
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching user data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
     
     const savedDarkMode = localStorage.getItem('darkMode') === 'true';
     setDarkMode(savedDarkMode);
     if (savedDarkMode) {
       document.documentElement.classList.add('dark');
     }
+    
+    fetchUserData();
   }, []);
 
   const toggleDarkMode = () => {
@@ -101,37 +127,45 @@ export default function Profile() {
 
       {/* Stats Cards */}
       <div className="p-6">
-        <div className="grid grid-cols-3 gap-4 mb-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl p-4 text-center shadow-sm transition-colors"
-          >
-            <p className="text-2xl font-bold text-primary-green">12</p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Active Groups</p>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl p-4 text-center shadow-sm transition-colors"
-          >
-            <p className="text-2xl font-bold text-primary-blue">$1,245</p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Total Spent</p>
-          </motion.div>
-          
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.5 }}
-            className="bg-white dark:bg-gray-800 rounded-2xl p-4 text-center shadow-sm transition-colors"
-          >
-            <p className="text-2xl font-bold text-primary-amber">89</p>
-            <p className="text-xs text-gray-600 dark:text-gray-400">Transactions</p>
-          </motion.div>
-        </div>
+        {loading ? (
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="bg-gray-200 dark:bg-gray-700 rounded-2xl p-4 animate-pulse h-20"></div>
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl p-4 text-center shadow-sm transition-colors"
+            >
+              <p className="text-2xl font-bold text-primary-green">{stats.activeGroups}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Active Groups</p>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl p-4 text-center shadow-sm transition-colors"
+            >
+              <p className="text-2xl font-bold text-primary-blue">${stats.totalSpent.toFixed(0)}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Total Spent</p>
+            </motion.div>
+            
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5 }}
+              className="bg-white dark:bg-gray-800 rounded-2xl p-4 text-center shadow-sm transition-colors"
+            >
+              <p className="text-2xl font-bold text-primary-amber">{stats.transactions}</p>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Transactions</p>
+            </motion.div>
+          </div>
+        )}
 
         {/* Dark Mode Toggle */}
         <motion.div

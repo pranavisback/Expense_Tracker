@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, DollarSign, Users, Coffee, Car, Home, ShoppingBag, Gamepad2, Heart } from 'lucide-react';
 import { api } from '../utils/api';
@@ -17,31 +17,66 @@ const categories = [
 ];
 
 const splitMethods = [
-  { id: 'equal', label: 'Split Equally', description: 'Everyone pays the same amount' },
-  { id: 'exact', label: 'Exact Amounts', description: 'Enter specific amounts for each person' },
-  { id: 'percentage', label: 'Percentages', description: 'Split by percentage' }
-];
-
-const mockUsers = [
-  { id: 1, name: 'You', avatar: 'https://ui-avatars.com/api/?name=You&background=4CAF50&color=fff' },
-  { id: 2, name: 'Alice', avatar: 'https://ui-avatars.com/api/?name=Alice&background=2196F3&color=fff' },
-  { id: 3, name: 'Bob', avatar: 'https://ui-avatars.com/api/?name=Bob&background=FFC107&color=fff' },
-  { id: 4, name: 'Charlie', avatar: 'https://ui-avatars.com/api/?name=Charlie&background=FF5722&color=fff' }
+  { id: 'equal', label: 'Split Equally', description: 'Everyone pays the same amount' }
 ];
 
 export default function AddExpense({ onClose }: AddExpenseProps) {
   const [step, setStep] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [groups, setGroups] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
   const [formData, setFormData] = useState({
     amount: '',
     description: '',
     category: '',
-    paidBy: 1,
-    splitMethod: 'equal',
-    participants: [1, 2]
+    group: '',
+    splitBetween: [],
+    splitMethod: 'equal'
   });
 
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Get current user
+        const userData = localStorage.getItem('splitease_user');
+        if (userData) {
+          setCurrentUser(JSON.parse(userData));
+        }
+
+        // Fetch user groups
+        const groupsResponse = await api.getGroups();
+        const groupsData = await groupsResponse.json();
+        
+        if (groupsData.success) {
+          setGroups(groupsData.data.groups);
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const handleGroupSelect = async (groupId) => {
+    try {
+      const response = await api.getGroupDetails(groupId);
+      const data = await response.json();
+      
+      if (data.success) {
+        setSelectedGroup(data.data.group);
+        setFormData(prev => ({ 
+          ...prev, 
+          group: groupId,
+          splitBetween: [currentUser?._id] // Start with current user
+        }));
+      }
+    } catch (error) {
+      console.error('Error fetching group details:', error);
+    }
+  };
 
   const handleSubmit = async () => {
     setLoading(true);
@@ -53,7 +88,9 @@ export default function AddExpense({ onClose }: AddExpenseProps) {
         amount: parseFloat(formData.amount),
         category: formData.category,
         description: formData.description,
-        date: new Date().toISOString()
+        group: formData.group || null,
+        splitBetween: formData.splitBetween,
+        splitMethod: formData.splitMethod
       };
 
       const response = await api.createExpense(expenseData);
@@ -61,7 +98,7 @@ export default function AddExpense({ onClose }: AddExpenseProps) {
 
       if (data.success) {
         onClose();
-        window.location.reload(); // Refresh to show new expense
+        window.location.reload();
       } else {
         setError(data.error || 'Failed to create expense');
       }
@@ -169,88 +206,140 @@ export default function AddExpense({ onClose }: AddExpenseProps) {
                   disabled={!formData.amount || !formData.description || !formData.category}
                   className="w-full bg-primary-green text-white py-4 rounded-2xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Next: Split Details
+                  Next: Choose Group
                 </motion.button>
               </motion.div>
             )}
 
-            {/* Step 2: Split Details */}
+            {/* Step 2: Choose Group */}
             {step === 2 && (
               <motion.div
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 className="space-y-6"
               >
-                {/* Paid By */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">Paid by</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {mockUsers.map((user) => (
-                      <motion.button
-                        key={user.id}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => setFormData({ ...formData, paidBy: user.id })}
-                        className={`flex items-center space-x-3 p-3 rounded-2xl border-2 transition-all ${
-                          formData.paidBy === user.id
-                            ? 'border-primary-green bg-primary-green/10'
-                            : 'border-gray-200'
-                        }`}
-                      >
-                        <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
-                        <span className="font-medium">{user.name}</span>
-                      </motion.button>
-                    ))}
-                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">Choose Group</h3>
+                  <p className="text-gray-600 text-sm mb-4">Select a group to split this expense, or add as personal expense</p>
                 </div>
 
-                {/* Split Method */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">Split method</label>
-                  <div className="space-y-3">
-                    {splitMethods.map((method) => (
-                      <motion.button
-                        key={method.id}
-                        whileTap={{ scale: 0.98 }}
-                        onClick={() => setFormData({ ...formData, splitMethod: method.id })}
-                        className={`w-full text-left p-4 rounded-2xl border-2 transition-all ${
-                          formData.splitMethod === method.id
-                            ? 'border-primary-green bg-primary-green/10'
-                            : 'border-gray-200'
-                        }`}
-                      >
-                        <div className="font-semibold text-gray-900">{method.label}</div>
-                        <div className="text-sm text-gray-600">{method.description}</div>
-                      </motion.button>
-                    ))}
+                {/* Personal Expense Option */}
+                <motion.button
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => {
+                    setFormData(prev => ({ ...prev, group: '', splitBetween: [currentUser?._id] }));
+                    setSelectedGroup(null);
+                    setStep(3);
+                  }}
+                  className="w-full flex items-center p-4 rounded-2xl border-2 border-gray-200 hover:border-primary-green transition-all"
+                >
+                  <div className="w-12 h-12 bg-gray-100 rounded-xl flex items-center justify-center mr-4">
+                    <Users size={24} className="text-gray-600" />
                   </div>
+                  <div className="text-left">
+                    <h4 className="font-semibold text-gray-900">Personal Expense</h4>
+                    <p className="text-sm text-gray-600">Just for you, no splitting</p>
+                  </div>
+                </motion.button>
+
+                {/* Group Options */}
+                <div className="space-y-3">
+                  {groups.map((group) => (
+                    <motion.button
+                      key={group._id}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => {
+                        handleGroupSelect(group._id);
+                        setStep(3);
+                      }}
+                      className="w-full flex items-center p-4 rounded-2xl border-2 border-gray-200 hover:border-primary-green transition-all"
+                    >
+                      <div className="w-12 h-12 bg-primary-green rounded-xl flex items-center justify-center mr-4">
+                        <Users size={24} className="text-white" />
+                      </div>
+                      <div className="text-left flex-1">
+                        <h4 className="font-semibold text-gray-900">{group.name}</h4>
+                        <p className="text-sm text-gray-600">{group.memberCount} members</p>
+                      </div>
+                    </motion.button>
+                  ))}
                 </div>
 
-                {/* Participants */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">Split between</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {mockUsers.map((user) => (
-                      <motion.button
-                        key={user.id}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => {
-                          const newParticipants = formData.participants.includes(user.id)
-                            ? formData.participants.filter(id => id !== user.id)
-                            : [...formData.participants, user.id];
-                          setFormData({ ...formData, participants: newParticipants });
-                        }}
-                        className={`flex items-center space-x-3 p-3 rounded-2xl border-2 transition-all ${
-                          formData.participants.includes(user.id)
-                            ? 'border-primary-green bg-primary-green/10'
-                            : 'border-gray-200'
-                        }`}
-                      >
-                        <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
-                        <span className="font-medium">{user.name}</span>
-                      </motion.button>
-                    ))}
+                <motion.button
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setStep(1)}
+                  className="w-full bg-gray-100 text-gray-700 py-4 rounded-2xl font-semibold"
+                >
+                  Back
+                </motion.button>
+              </motion.div>
+            )}
+
+            {/* Step 3: Split Details */}
+            {step === 3 && (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="space-y-6"
+              >
+                {selectedGroup ? (
+                  <>
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Split in {selectedGroup.name}</h3>
+                      <p className="text-gray-600 text-sm mb-4">Choose who to split this expense with</p>
+                    </div>
+
+                    {/* Group Members */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">Split between</label>
+                      <div className="space-y-3">
+                        {selectedGroup.members?.map((member) => (
+                          <motion.button
+                            key={member.user._id}
+                            whileTap={{ scale: 0.98 }}
+                            onClick={() => {
+                              const userId = member.user._id;
+                              const newSplitBetween = formData.splitBetween.includes(userId)
+                                ? formData.splitBetween.filter(id => id !== userId)
+                                : [...formData.splitBetween, userId];
+                              setFormData({ ...formData, splitBetween: newSplitBetween });
+                            }}
+                            className={`w-full flex items-center space-x-3 p-3 rounded-2xl border-2 transition-all ${
+                              formData.splitBetween.includes(member.user._id)
+                                ? 'border-primary-green bg-primary-green/10'
+                                : 'border-gray-200'
+                            }`}
+                          >
+                            <img 
+                              src={member.user.avatar} 
+                              alt={member.user.name} 
+                              className="w-10 h-10 rounded-full" 
+                            />
+                            <div className="text-left flex-1">
+                              <span className="font-medium">{member.user.name}</span>
+                              <p className="text-sm text-gray-500">{member.user.email}</p>
+                            </div>
+                            {formData.splitBetween.includes(member.user._id) && (
+                              <div className="text-primary-green font-semibold">
+                                ${(parseFloat(formData.amount) / formData.splitBetween.length || 0).toFixed(2)}
+                              </div>
+                            )}
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Personal Expense</h3>
+                    <p className="text-gray-600 text-sm mb-4">This expense will be added to your personal records</p>
+                    <div className="p-4 bg-gray-50 rounded-2xl">
+                      <p className="font-medium">Amount: ${formData.amount}</p>
+                      <p className="text-sm text-gray-600">Only you will see this expense</p>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {error && (
                   <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-2xl">
@@ -262,7 +351,7 @@ export default function AddExpense({ onClose }: AddExpenseProps) {
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => setStep(1)}
+                    onClick={() => setStep(2)}
                     disabled={loading}
                     className="flex-1 bg-gray-100 text-gray-700 py-4 rounded-2xl font-semibold disabled:opacity-50"
                   >
@@ -272,7 +361,7 @@ export default function AddExpense({ onClose }: AddExpenseProps) {
                     whileHover={{ scale: loading ? 1 : 1.02 }}
                     whileTap={{ scale: loading ? 1 : 0.98 }}
                     onClick={handleSubmit}
-                    disabled={loading}
+                    disabled={loading || (selectedGroup && formData.splitBetween.length === 0)}
                     className="flex-1 bg-primary-green text-white py-4 rounded-2xl font-semibold disabled:opacity-50"
                   >
                     {loading ? 'Adding...' : 'Add Expense'}

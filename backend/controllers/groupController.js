@@ -2,6 +2,7 @@ import Group from '../models/Group.js';
 import User from '../models/User.js';
 import Expense from '../models/Expense.js';
 import { generateInviteCode } from '../utils/calculations.js';
+import { createGroupInviteNotification } from './notificationController.js';
 
 export const createGroup = async (req, res) => {
   try {
@@ -177,16 +178,12 @@ export const addMemberByEmail = async (req, res) => {
       });
     }
 
-    group.members.push({ user: userToAdd._id, role: 'member' });
-    await group.save();
-
-    const populatedGroup = await Group.findById(group._id)
-      .populate('members.user', 'name email avatar')
-      .populate('createdBy', 'name email');
+    // Send notification to user instead of directly adding
+    await createGroupInviteNotification(req.user.id, userToAdd._id, group._id);
 
     res.json({
       success: true,
-      data: { group: populatedGroup }
+      message: `Invitation sent to ${email}`
     });
   } catch (error) {
     res.status(500).json({
